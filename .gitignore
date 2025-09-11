@@ -1,0 +1,91 @@
+node_modules/
+
+# Vite / frontend build output
+dist/
+build/
+.vite/
+
+# Local env and firebase config
+.firebaserc
+.firebase/
+
+# TypeScript incremental build files
+*.tsbuildinfo
+
+# Firebase / Functions build artifacts and emulator files
+.firebase/
+firebase-debug.log
+functions/lib/
+functions/.runtimeconfig.json
+
+# Secrets (do NOT commit service account keys or env files)
+serviceAccountKey.json
+serviceAccountKey*.json
+*.key.json
+*.credentials.json
+.env
+.env.*
+.env.local
+
+# Lockfiles (optional to ignore or keep depending on repo policy)
+package-lock.json
+functions/package-lock.json
+
+# Editor directories and OS files
+.vscode/
+.idea/
+.history/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and coverage
+*.log
+logs/
+coverage/
+
+# Source maps (optional to ignore)
+*.map
+
+# Misc caches
+.cache/
+.parcel-cache/
+.npm/
+
+# Ignore build outputs from other tools
+out/
+
+# Optional: Ignore local VS Code workspace settings file
+.vscode/settings.json
+
+# OneDrive metadata and temp files
+~$*
+~*.*
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
