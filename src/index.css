@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .input-field {
+    @apply block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary;
+  }
+}
+
+.button-primary {
+  @apply font-bold text-white bg-primary rounded-lg shadow-md py-3 px-4 hover:bg-primary-hover transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed;
+}
+
+.custom-modal {
+  padding: 0 !important;
+}
