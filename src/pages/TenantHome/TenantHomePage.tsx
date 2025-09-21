@@ -15,6 +15,9 @@ import { FiDollarSign, FiCalendar, FiHome } from 'react-icons/fi';
 interface UnitDetails {
   unitName: string;
   rentAmount: number;
+  unitId?: string;
+  tenantUID?: string;
+  tenantEmail?: string;
 }
 
 interface BillDetails {
@@ -35,21 +38,40 @@ const TenantHomePage = () => {
   useEffect(() => {
     const fetchTenantData = async () => {
       if (!currentUser) return;
+      console.log("Current user:", currentUser.uid, currentUser.email);
 
       try {
-        // --- Query 1: Fetch the user's assigned unit ---
-        const unitsQuery = query(
+        // Try to fetch unit by user ID first, then by email if needed
+        let unitsQuery = query(
           collection(db, 'units'),
-          where('tenantUID', '==', currentUser.uid),
+          where('currentTenantId', '==', currentUser.uid),
           limit(1)
         );
         const unitSnapshot = await getDocs(unitsQuery);
 
-        if (unitSnapshot.empty) {
-          throw new Error("No unit assigned to your account.");
+        if (unitSnapshot.empty && currentUser.email) {
+          // If no unit found by UID, try by email
+          console.log("No unit found by UID, trying email");
+          unitsQuery = query(
+            collection(db, 'units'),
+            where('tenantEmail', '==', currentUser.email),
+            limit(1)
+          );
+          const emailUnitSnapshot = await getDocs(unitsQuery);
+          
+          if (!emailUnitSnapshot.empty) {
+            const unitData = emailUnitSnapshot.docs[0].data() as UnitDetails;
+            setUnitDetails(unitData);
+          } else {
+            console.log("No unit found by email either");
+            setUnitDetails(null);
+          }
+        } else if (!unitSnapshot.empty) {
+          const unitData = unitSnapshot.docs[0].data() as UnitDetails;
+          setUnitDetails(unitData);
+        } else {
+          setUnitDetails(null);
         }
-        const unitData = unitSnapshot.docs[0].data() as UnitDetails;
-        setUnitDetails(unitData);
 
         // --- Query 2: Fetch the user's most recent due/overdue bill ---
         const billsQuery = query(
@@ -82,9 +104,33 @@ const TenantHomePage = () => {
     return <div>Loading your dashboard...</div>;
   }
 
+
   // Display an error message if something went wrong
   if (error) {
     return <Card><p className="text-danger">{error}</p></Card>;
+  }
+
+  // Show a friendly message if no unit is assigned
+  if (!unitDetails) {
+    return (
+      <Card>
+        <h2 className="text-xl font-bold font-secondary mb-4">No Unit Assigned</h2>
+        <p className="text-text-secondary">You do not have a unit assigned yet. Please contact the property manager for assistance.</p>
+        
+        {/* Debug button - visible only in development */}
+        {import.meta.env.DEV && (
+          <button 
+            onClick={async () => {
+              const { checkAuthAndData } = await import('../../utils/debug');
+              checkAuthAndData();
+            }}
+            className="mt-4 text-xs text-primary underline"
+          >
+            Debug Auth & Data
+          </button>
+        )}
+      </Card>
+    );
   }
 
   return (

@@ -1,15 +1,23 @@
 {
-  "functions": {
-    "source": "functions",
-    "codebase": "default",
-    "ignore": [
-      "node_modules",
-      ".git",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "*.local"
-    ]
-  },
+  "functions": [
+    {
+      "codebase": "default",
+      "platform": "gcfv2",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "source": "functions",
+      "runtime": "nodejs22",
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -17,7 +25,54 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "headers": [
+      {
+        "source": "/api/**",
+        "headers": [
+          {
+            "key": "Access-Control-Allow-Origin",
+            "value": "https://karv-home.web.app"
+          },
+          {
+            "key": "Access-Control-Allow-Methods",
+            "value": "GET, POST, OPTIONS"
+          },
+          {
+            "key": "Access-Control-Allow-Headers",
+            "value": "Content-Type, Authorization"
+          }
+        ]
+      }
+    ],
     "rewrites": [
+      {
+        "source": "/api/createPayment",
+        "function": {
+          "name": "phonepeCreatePayment",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/paymentStatus",
+        "function": {
+          "name": "phonepePaymentStatus",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/paymentCallback",
+        "function": {
+          "name": "phonepePaymentCallback",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/webhook",
+        "function": {
+          "name": "phonepeWebhook",
+          "region": "asia-south1"
+        }
+      },
       {
         "source": "**",
         "destination": "/index.html"

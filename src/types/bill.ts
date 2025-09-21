@@ -1,13 +1,16 @@
 export interface Bill {
   id: string;
   billId: string;
-  status: 'paid' | 'overdue' | 'due' | string;
-  totalAmount: number;
-  dueDate: { toDate: () => Date };
-  unitId?: string;
-  unitName?: string;
-  paymentDate?: { toDate: () => Date };
   billDate: { toDate: () => Date };
-  rentAmount?: number;
-  overdueCharges?: number;
+  dueDate: { toDate: () => Date };
+  totalAmount: number;
+  unitName: string;
+  status: 'paid' | 'due' | 'overdue' | string;
+  // id: string;
+  unitId: string;
+  // unitName: string;
+  tenantUID: string;
+  // billDate: string;
+  rentAmount: number;
+  overdueCharges: number;
 }

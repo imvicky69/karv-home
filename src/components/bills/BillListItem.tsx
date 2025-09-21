@@ -8,10 +8,14 @@ import html2canvas from 'html2canvas';
 // Import our other components
 import Receipt from './Receipt';
 import type { Bill } from '../../types/bill';
+interface Tenant {
+  displayName?: string | null;
+  email?: string | null;
+}
 
 interface BillListItemProps {
   bill: Bill;
-  tenant?: any; // The current user object from useAuth(); optional here
+  tenant?: Tenant; // The current user object from useAuth(); optional here
 }
 
 // Helper object to manage status styles and icons
@@ -25,10 +29,9 @@ const statusConfig = {
 const BillListItem = ({ bill, tenant }: BillListItemProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  
-  const receiptId = `receipt-${bill.id}`;
+  const [isPaying, setIsPaying] = useState(false);
 
-  // PhonePe payment integration removed from UI; placeholder text shown instead.
+  const receiptId = `receipt-${bill.id}`;
 
   // --- RECEIPT LOGIC ---
   const handleDownloadReceipt = async () => {
@@ -44,15 +47,41 @@ const BillListItem = ({ bill, tenant }: BillListItemProps) => {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`Receipt-${bill.billId}.pdf`);
-      } catch (err) {
-        console.error('Receipt generation error', err);
-        toast.error("Failed to generate receipt.");
-      } finally {
+    } catch (err) {
+      console.error('Receipt generation error', err);
+      toast.error('Failed to generate receipt.');
+    } finally {
       setIsGenerating(false);
     }
   };
 
-  const config = statusConfig[bill.status as keyof typeof statusConfig] || statusConfig.default;
+  // --- PAYMENT LOGIC ---
+  const handlePayNow = async () => {
+    setIsPaying(true);
+    try {
+      const response = await fetch('https://us-central1-indivio-in.cloudfunctions.net/api/payment/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: String(bill.totalAmount) }),
+      });
+      const data = await response.json();
+      if (data.success && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        toast.error('Payment initiation failed.');
+      }
+    } catch (err) {
+      console.error('Payment initiation error', err);
+      toast.error('Payment initiation failed.');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const statusToUse = bill.status;
+  const config = statusConfig[statusToUse as keyof typeof statusConfig] || statusConfig.default;
   const Icon = config.icon;
   const billMonth = bill.billDate.toDate().toLocaleString('default', { month: 'long', year: 'numeric' });
 
@@ -100,7 +129,7 @@ const BillListItem = ({ bill, tenant }: BillListItemProps) => {
               </div>
               
               <div className="mt-4 space-y-2">
-                {bill.status === 'paid' && (
+                {statusToUse === 'paid' && (
                   <button 
                     onClick={handleDownloadReceipt}
                     disabled={isGenerating}
@@ -111,10 +140,16 @@ const BillListItem = ({ bill, tenant }: BillListItemProps) => {
                   </button>
                 )}
                 
-                {(bill.status === 'due' || bill.status === 'overdue') && (
-                  <div className="w-full bg-yellow-50 border border-yellow-200 rounded-lg py-2 px-4 text-center text-sm text-yellow-800">
-                    PhonePe PG will be integrated here
-                  </div>
+                {(statusToUse === 'due' || statusToUse === 'overdue') && (
+                  <>
+                    <button
+                      onClick={handlePayNow}
+                      disabled={isPaying}
+                      className="w-full flex items-center justify-center font-semibold bg-primary text-white rounded-lg py-2 px-4 hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    >
+                      {isPaying ? 'Processing...' : 'Pay Now'}
+                    </button>
+                  </>
                 )}
               </div>
             </motion.div>

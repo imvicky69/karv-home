@@ -33,12 +33,26 @@ const TenantBillsPage = () => {
         });
 
         // Step 2: Fetch all bills for the current user, ordered by most recent first
-        const q = query(
+        let billsSnapshot;
+        
+        // Try to find bills by UID
+        let q = query(
           collection(db, 'bills'),
-          where('tenantUID', '==', currentUser.uid),
+          where('tenantId', '==', currentUser.uid),
           orderBy('billDate', 'desc')
         );
-        const billsSnapshot = await getDocs(q);
+        billsSnapshot = await getDocs(q);
+        
+        // If no bills found by UID and user has email, try by email
+        if (billsSnapshot.empty && currentUser.email) {
+          console.log("No bills found by UID, trying email");
+          q = query(
+            collection(db, 'bills'),
+            where('tenantEmail', '==', currentUser.email),
+            orderBy('billDate', 'desc')
+          );
+          billsSnapshot = await getDocs(q);
+        }
         
         // Step 3: Combine bill data with the unit name from our map
         const billsList = billsSnapshot.docs.map(doc => {
