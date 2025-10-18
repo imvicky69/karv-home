@@ -1,18 +1,56 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
 import { signOut, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, storage } from '../../firebase';
+import { auth, storage, db } from '../../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { toast } from 'react-toastify';
 import { getInitials } from '../../utils/avatar';
-import { FiUser, FiMail, FiLogOut, FiEdit2, FiCamera } from 'react-icons/fi';
+import { FiUser, FiMail, FiLogOut, FiEdit2, FiCamera, FiPhone, FiMapPin, FiUserCheck, FiCalendar, FiBriefcase, FiSave, FiX } from 'react-icons/fi';
 import Card from '../../components/ui/Card';
+import type { Profile } from '../../types/profile';
 
 const TenantProfilePage = () => {
   const { currentUser } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedProfile, setEditedProfile] = useState<Partial<Profile>>({});
+  const [isLoading, setIsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!currentUser) return;
+      
+      try {
+        const profileDoc = await getDoc(doc(db, 'profiles', currentUser.uid));
+        if (profileDoc.exists()) {
+          setProfile(profileDoc.data() as Profile);
+        } else {
+          // Create default profile
+          const defaultProfile: Profile = {
+            uid: currentUser.uid,
+            displayName: currentUser.displayName || '',
+            email: currentUser.email || '',
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          };
+          await setDoc(doc(db, 'profiles', currentUser.uid), defaultProfile);
+          setProfile(defaultProfile);
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        toast.error('Failed to load profile data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [currentUser]);
 
   // --- LOGOUT HANDLER ---
   const handleLogout = async () => {
@@ -67,9 +105,62 @@ const TenantProfilePage = () => {
       setIsUploading(false);
     }
   };
+  const handleEditProfile = () => {
+    setIsEditing(true);
+    setEditedProfile(profile || {});
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedProfile({});
+  };
+
+  const handleSaveProfile = async () => {
+    if (!currentUser || !profile) return;
+
+    try {
+      const updatedProfile = {
+        ...profile,
+        ...editedProfile,
+        updatedAt: Timestamp.now(),
+      };
+      await updateDoc(doc(db, 'profiles', currentUser.uid), updatedProfile);
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      setEditedProfile({});
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    }
+  };
+
+  const handleInputChange = (field: keyof Profile, value: string) => {
+    setEditedProfile(prev => ({ ...prev, [field]: value }));
+  };
+
+  if (isLoading) {
+    return (
+      <motion.div 
+        className="flex items-center justify-center min-h-[400px]"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary">Loading profile...</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <h1 className="text-3xl font-bold font-secondary mb-8">My Profile</h1>
       
       <div className="flex flex-col items-center">
@@ -94,33 +185,173 @@ const TenantProfilePage = () => {
             accept="image/png, image/jpeg"
             ref={fileInputRef}
             onChange={handleFileChange}
-            className="hidden" // The input is hidden, we trigger it with the button
+            className="hidden"
           />
         </div>
         {isUploading && <p className="text-text-secondary mb-4">Uploading...</p>}
 
-        {/* --- USER DETAILS CARD --- */}
-        <Card className="w-full max-w-md">
-          <div className="space-y-4">
+        {/* --- PROFILE DETAILS CARD --- */}
+        <Card className="w-full max-w-2xl mb-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-bold">Personal Information</h2>
+            {!isEditing ? (
+              <button 
+                onClick={handleEditProfile}
+                className="flex items-center text-primary hover:text-primary-dark"
+              >
+                <FiEdit2 className="mr-2" />
+                Edit
+              </button>
+            ) : (
+              <div className="flex space-x-2">
+                <button 
+                  onClick={handleSaveProfile}
+                  className="flex items-center text-green-600 hover:text-green-700"
+                >
+                  <FiSave className="mr-2" />
+                  Save
+                </button>
+                <button 
+                  onClick={handleCancelEdit}
+                  className="flex items-center text-red-600 hover:text-red-700"
+                >
+                  <FiX className="mr-2" />
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center">
-              <FiUser className="text-primary mr-4" size={20} />
+              <FiUser className="text-primary mr-3" size={20} />
               <div>
                 <p className="text-sm text-text-secondary">Full Name</p>
-                <p className="font-semibold">{currentUser?.displayName || 'N/A'}</p>
+                <p className="font-semibold">{profile?.displayName || 'N/A'}</p>
               </div>
             </div>
             <div className="flex items-center">
-              <FiMail className="text-primary mr-4" size={20} />
+              <FiMail className="text-primary mr-3" size={20} />
               <div>
                 <p className="text-sm text-text-secondary">Email Address</p>
-                <p className="font-semibold">{currentUser?.email || 'N/A'}</p>
+                <p className="font-semibold">{profile?.email || 'N/A'}</p>
               </div>
             </div>
+            
+            {isEditing ? (
+              <>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-text-secondary mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={editedProfile.phone || ''}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-text-secondary mb-1">Address</label>
+                  <textarea
+                    value={editedProfile.address || ''}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Enter your address"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={editedProfile.dateOfBirth || ''}
+                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Unit Type</label>
+                  <select
+                    value={editedProfile.unitType || ''}
+                    onChange={(e) => handleInputChange('unitType', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Select unit type</option>
+                    <option value="shop">Shop</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="library">Library</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Lease Start Date</label>
+                  <input
+                    type="date"
+                    value={editedProfile.leaseStartDate || ''}
+                    onChange={(e) => handleInputChange('leaseStartDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-text-secondary mb-1">Lease End Date</label>
+                  <input
+                    type="date"
+                    value={editedProfile.leaseEndDate || ''}
+                    onChange={(e) => handleInputChange('leaseEndDate', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center">
+                  <FiPhone className="text-primary mr-3" size={20} />
+                  <div>
+                    <p className="text-sm text-text-secondary">Phone Number</p>
+                    <p className="font-semibold">{profile?.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <FiCalendar className="text-primary mr-3" size={20} />
+                  <div>
+                    <p className="text-sm text-text-secondary">Date of Birth</p>
+                    <p className="font-semibold">{profile?.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <FiBriefcase className="text-primary mr-3" size={20} />
+                  <div>
+                    <p className="text-sm text-text-secondary">Unit Type</p>
+                    <p className="font-semibold">{profile?.unitType ? profile.unitType.charAt(0).toUpperCase() + profile.unitType.slice(1) : 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <FiUserCheck className="text-primary mr-3" size={20} />
+                  <div>
+                    <p className="text-sm text-text-secondary">Lease Start</p>
+                    <p className="font-semibold">{profile?.leaseStartDate ? new Date(profile.leaseStartDate).toLocaleDateString() : 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="md:col-span-2 flex items-center">
+                  <FiMapPin className="text-primary mr-3" size={20} />
+                  <div className="flex-1">
+                    <p className="text-sm text-text-secondary">Address</p>
+                    <p className="font-semibold">{profile?.address || 'Not provided'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <FiCalendar className="text-primary mr-3" size={20} />
+                  <div>
+                    <p className="text-sm text-text-secondary">Lease End</p>
+                    <p className="font-semibold">{profile?.leaseEndDate ? new Date(profile.leaseEndDate).toLocaleDateString() : 'Not provided'}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </Card>
 
         {/* --- ACTION BUTTONS --- */}
-        <div className="w-full max-w-md mt-6 space-y-3">
+        <div className="w-full max-w-md space-y-3">
           <button 
             onClick={handleChangePassword}
             className="w-full flex items-center justify-center font-semibold bg-white border border-gray-300 rounded-lg py-3 px-4 hover:bg-gray-50 transition-colors"
@@ -137,7 +368,7 @@ const TenantProfilePage = () => {
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

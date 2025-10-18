@@ -56,11 +56,11 @@ const TenantBillsPage = () => {
         
         // Step 3: Combine bill data with the unit name from our map
         const billsList = billsSnapshot.docs.map(doc => {
-          const data = doc.data() as Record<string, any>;
+          const data = doc.data() as Record<string, unknown>;
           return {
             id: doc.id,
             ...data,
-            unitName: unitMap.get(data.unitId) || 'Unknown Unit', // Look up the unit name
+            unitName: unitMap.get(data.unitId as string) || 'Unknown Unit', // Look up the unit name
             rentAmount: typeof data.rentAmount === 'number' ? data.rentAmount : Number(data.rentAmount) || 0,
             overdueCharges: typeof data.overdueCharges === 'number' ? data.overdueCharges : Number(data.overdueCharges) || 0,
           } as Bill;

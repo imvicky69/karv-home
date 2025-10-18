@@ -22,10 +22,10 @@ const Sidebar = () => {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center px-4 py-3 my-1 rounded-lg transition-colors duration-200 ${
+              `flex items-center px-4 py-3 my-1 rounded-lg transition-all duration-200 hover:scale-105 ${
                 isActive
-                  ? 'bg-primary text-white'
-                  : 'text-text-secondary hover:bg-gray-100'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary'
               }`
             }
           >
@@ -48,7 +48,7 @@ const BottomNav = () => {
             key={item.path}
             to={item.path}
             className={({ isActive }) =>
-              `flex flex-col items-center justify-center w-full transition-colors duration-200 ${
+              `flex flex-col items-center justify-center w-full py-2 transition-all duration-200 relative ${
                 isActive ? 'text-primary' : 'text-text-secondary'
               }`
             }

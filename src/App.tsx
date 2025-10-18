@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import PaymentSuccess from './components/PaymentSuccess';
 import PaymentFailure from './components/PaymentFailure';
-import PaymentCallbackPage from './pages/PaymentCallback/PaymentCallbackPage';
+// import PaymentCallbackPage from './pages/PaymentCallback/PaymentCallbackPage';
 import { useAuth } from './contexts/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -51,7 +51,7 @@ function App() {
       <Routes>
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/failure" element={<PaymentFailure />} />
-        <Route path="/payment/callback" element={<PaymentCallbackPage />} />
+        {/* <Route path="/payment/callback" element={<PaymentCallbackPage />} /> */}
         <Route path="/*" element={<AppRoutes />} />
       </Routes>
     </BrowserRouter>
