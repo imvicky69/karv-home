@@ -4,14 +4,18 @@ import { useAuth } from '../../contexts/AuthContext';
 import { collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
 
 // Import our new UI components
 import Card from '../../components/ui/Card';
 import StatCard from '../../components/ui/StatCard';
 import InfoRow from '../../components/ui/InfoRow';
+import Button from '../../components/ui/Button';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import Badge from '../../components/ui/Badge';
 
 // Import icons
-import { FiCreditCard, FiCalendar, FiHome } from 'react-icons/fi';
+import { FiCreditCard, FiCalendar, FiHome, FiFileText, FiArrowRight } from 'react-icons/fi';
 
 // Define the shape of our data for TypeScript
 interface UnitDetails {
@@ -23,17 +27,25 @@ interface UnitDetails {
 }
 
 interface BillDetails {
+  id?: string;
+  billId?: string;
   totalAmount: number;
   dueDate: {
     toDate: () => Date;
   };
+  billDate?: {
+    toDate: () => Date;
+  };
   status: string;
+  unitName?: string;
 }
 
 const TenantHomePage = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [unitDetails, setUnitDetails] = useState<UnitDetails | null>(null);
   const [currentBill, setCurrentBill] = useState<BillDetails | null>(null);
+  const [recentBills, setRecentBills] = useState<BillDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPaying, setIsPaying] = useState(false);
@@ -87,9 +99,24 @@ const TenantHomePage = () => {
         const billSnapshot = await getDocs(billsQuery);
 
         if (!billSnapshot.empty) {
-          const billData = billSnapshot.docs[0].data() as BillDetails;
-          setCurrentBill(billData);
+          const billDoc = billSnapshot.docs[0];
+          const billData = billDoc.data() as BillDetails;
+          setCurrentBill({ ...billData, id: billDoc.id });
         }
+
+        // --- Query 3: Fetch recent bills (last 3) ---
+        const recentBillsQuery = query(
+          collection(db, 'bills'),
+          where('tenantUID', '==', currentUser.uid),
+          orderBy('billDate', 'desc'),
+          limit(3)
+        );
+        const recentBillsSnapshot = await getDocs(recentBillsQuery);
+        const recentBillsList = recentBillsSnapshot.docs.map(doc => {
+          const data = doc.data() as BillDetails;
+          return { ...data, id: doc.id };
+        });
+        setRecentBills(recentBillsList);
 
       } catch (err) {
         console.error("Error fetching tenant data:", err);
@@ -131,19 +158,7 @@ const TenantHomePage = () => {
 
   // Display a loading state while fetching data
   if (isLoading) {
-    return (
-      <motion.div 
-        className="flex items-center justify-center min-h-[400px]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-text-secondary">Loading your dashboard...</p>
-        </div>
-      </motion.div>
-    );
+    return <LoadingSpinner text="Loading your dashboard..." />;
   }
 
 
@@ -183,10 +198,13 @@ const TenantHomePage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-3xl font-bold font-secondary mb-2">
-            Welcome back, {currentUser?.displayName || 'Tenant'}!
-          </h1>
-          <p className="text-text-secondary mb-8">Here's a summary of your account.</p>
+          {/* Welcome Banner with Gradient */}
+          <div className="bg-gradient-to-r from-primary to-primary-hover rounded-2xl p-8 mb-8 text-white shadow-xl">
+            <h1 className="text-4xl font-bold font-secondary mb-2">
+              Welcome back, {currentUser?.displayName || 'Tenant'}!
+            </h1>
+            <p className="text-white/90 text-lg">Here's a summary of your account and recent activity.</p>
+          </div>
 
       {/* Grid for the StatCards */}
       <motion.div 
@@ -231,28 +249,76 @@ const TenantHomePage = () => {
         </motion.div>
       </motion.div>
 
-      {/* Card for detailed information */}
-      <Card className="mb-8">
-        <h2 className="text-xl font-bold font-secondary mb-4">Rental Details</h2>
-        <div className="space-y-2">
-          <InfoRow label="Unit Name" value={unitDetails?.unitName ?? null} />
-          <InfoRow label="Monthly Rent" value={unitDetails ? `₹${unitDetails.rentAmount}` : null} />
-          <InfoRow label="Current Bill Status" value={currentBill?.status || 'All clear!'} />
-        </div>
-        
-        {/* Pay button if there's a due or overdue bill */}
-        {currentBill && (currentBill.status === 'due' || currentBill.status === 'overdue') && (
-          <div className="mt-6">
-            <button
-              onClick={handlePayNow}
-              disabled={isPaying}
-              className="w-full flex items-center justify-center font-semibold bg-primary text-white rounded-lg py-3 px-4 hover:bg-primary-dark transition-colors disabled:opacity-50"
-            >
-              {isPaying ? 'Processing...' : `Pay ₹${currentBill.totalAmount} Now`}
-            </button>
+      {/* Two Column Layout for Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Rental Details Card */}
+        <Card>
+          <h2 className="text-xl font-bold font-secondary mb-4 flex items-center">
+            <FiHome className="mr-2 text-primary" />
+            Rental Details
+          </h2>
+          <div className="space-y-2">
+            <InfoRow label="Unit Name" value={unitDetails?.unitName ?? null} />
+            <InfoRow label="Monthly Rent" value={unitDetails ? `₹${unitDetails.rentAmount}` : null} />
+            <InfoRow label="Current Bill Status" value={currentBill?.status || 'All clear!'} />
           </div>
-        )}
-      </Card>
+          
+          {/* Pay button if there's a due or overdue bill */}
+          {currentBill && (currentBill.status === 'due' || currentBill.status === 'overdue') && (
+            <div className="mt-6">
+              <Button
+                onClick={handlePayNow}
+                disabled={isPaying}
+                variant="primary"
+                fullWidth
+                icon={FiCreditCard}
+              >
+                {isPaying ? 'Processing...' : `Pay ₹${currentBill.totalAmount} Now`}
+              </Button>
+            </div>
+          )}
+        </Card>
+
+        {/* Recent Bills Card */}
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold font-secondary flex items-center">
+              <FiFileText className="mr-2 text-primary" />
+              Recent Bills
+            </h2>
+            <Button
+              onClick={() => navigate('/bills')}
+              variant="ghost"
+              size="sm"
+              icon={FiArrowRight}
+            >
+              View All
+            </Button>
+          </div>
+          {recentBills.length > 0 ? (
+            <div className="space-y-3">
+              {recentBills.map((bill) => (
+                <div key={bill.id} className="flex items-center justify-between p-3 bg-background rounded-lg hover:bg-gray-100 transition-colors">
+                  <div>
+                    <p className="font-semibold text-text-primary">{bill.billId || 'Bill'}</p>
+                    <p className="text-sm text-text-secondary">
+                      {bill.billDate ? bill.billDate.toDate().toLocaleDateString('default', { month: 'short', year: 'numeric' }) : 'N/A'}
+                    </p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <p className="font-bold text-text-primary">₹{bill.totalAmount}</p>
+                    <Badge variant={bill.status === 'paid' ? 'success' : bill.status === 'overdue' ? 'danger' : 'warning'}>
+                      {bill.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-text-secondary text-center py-8">No bills available yet</p>
+          )}
+        </Card>
+      </div>
 
       </motion.div>
       </div>

@@ -12,7 +12,7 @@ const Card = ({ children, className = '' }: CardProps) => {
     // - rounded-xl: This gives us that nice, subtle roundness you wanted. (xl is a bit larger than lg)
     // - shadow-lg: Adds a soft, modern shadow for depth.
     // - p-6: Provides consistent internal padding.
-    <div className={`bg-surface rounded-xl shadow-lg p-6 ${className}`}>
+    <div className={`bg-surface rounded-xl shadow-lg hover:shadow-xl transition-shadow p-6 ${className}`}>
       {children}
     </div>
   );

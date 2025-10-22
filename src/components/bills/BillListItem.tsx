@@ -7,6 +7,8 @@ import html2canvas from 'html2canvas';
 
 // Import our other components
 import Receipt from './Receipt';
+import Button from '../ui/Button';
+import Badge from '../ui/Badge';
 import type { Bill } from '../../types/bill';
 interface Tenant {
   displayName?: string | null;
@@ -91,22 +93,26 @@ const BillListItem = ({ bill, tenant }: BillListItemProps) => {
         <Receipt bill={bill} tenant={tenant ?? null} receiptId={receiptId} />
       </div>
 
-      <motion.div layout className="bg-surface rounded-xl shadow-md overflow-hidden">
+      <motion.div layout className="bg-surface rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
         <div 
-          className="flex items-center justify-between p-4 cursor-pointer"
+          className="flex items-center justify-between p-5 cursor-pointer"
           onClick={() => setIsExpanded(!isExpanded)}
         >
-          <div className="flex items-center">
+          <div className="flex items-center flex-1">
             <div className={`p-3 rounded-full ${config.bgColor}`}>
               <Icon className={config.color} size={24} />
             </div>
-            <div className="ml-4">
-              <p className="font-bold text-text-primary">{bill.billId}</p>
-              <p className={`text-sm font-semibold ${config.color}`}>{config.text}</p>
+            <div className="ml-4 flex-1">
+              <p className="font-bold text-text-primary text-lg">{bill.billId}</p>
+              <div className="flex items-center mt-1">
+                <Badge variant={bill.status === 'paid' ? 'success' : bill.status === 'overdue' ? 'danger' : 'warning'} size="sm">
+                  {config.text}
+                </Badge>
+              </div>
             </div>
           </div>
           <div className="flex items-center">
-            <p className="text-lg font-bold text-text-primary mr-4">₹{bill.totalAmount}</p>
+            <p className="text-xl font-bold text-text-primary mr-4">₹{bill.totalAmount}</p>
             <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.3 }}>
               <FiChevronDown size={20} className="text-text-secondary" />
             </motion.div>
@@ -120,36 +126,45 @@ const BillListItem = ({ bill, tenant }: BillListItemProps) => {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="px-4 pb-4 border-t border-gray-200"
+              className="px-5 pb-5 border-t border-gray-200 bg-background"
             >
-              <div className="pt-4 space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-text-secondary">Unit</span><span className="font-semibold">{bill.unitName}</span></div>
-                <div className="flex justify-between"><span className="text-text-secondary">Bill for</span><span className="font-semibold">{billMonth}</span></div>
-                <div className="flex justify-between"><span className="text-text-secondary">Due Date</span><span className="font-semibold">{bill.dueDate.toDate().toLocaleDateString()}</span></div>
+              <div className="pt-4 space-y-3 text-sm">
+                <div className="flex justify-between items-center p-2 bg-surface rounded-lg">
+                  <span className="text-text-secondary">Unit</span>
+                  <span className="font-semibold">{bill.unitName}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-surface rounded-lg">
+                  <span className="text-text-secondary">Bill for</span>
+                  <span className="font-semibold">{billMonth}</span>
+                </div>
+                <div className="flex justify-between items-center p-2 bg-surface rounded-lg">
+                  <span className="text-text-secondary">Due Date</span>
+                  <span className="font-semibold">{bill.dueDate.toDate().toLocaleDateString()}</span>
+                </div>
               </div>
               
               <div className="mt-4 space-y-2">
                 {statusToUse === 'paid' && (
-                  <button 
+                  <Button
                     onClick={handleDownloadReceipt}
                     disabled={isGenerating}
-                    className="w-full flex items-center justify-center font-semibold bg-white border border-gray-300 rounded-lg py-2 px-4 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    variant="secondary"
+                    icon={FiDownload}
+                    fullWidth
                   >
-                    <FiDownload className="mr-2" />
                     {isGenerating ? 'Generating...' : 'Download Receipt'}
-                  </button>
+                  </Button>
                 )}
                 
                 {(statusToUse === 'due' || statusToUse === 'overdue') && (
-                  <>
-                    <button
-                      onClick={handlePayNow}
-                      disabled={isPaying}
-                      className="w-full flex items-center justify-center font-semibold bg-primary text-white rounded-lg py-2 px-4 hover:bg-primary-dark transition-colors disabled:opacity-50"
-                    >
-                      {isPaying ? 'Processing...' : 'Pay Now'}
-                    </button>
-                  </>
+                  <Button
+                    onClick={handlePayNow}
+                    disabled={isPaying}
+                    variant="primary"
+                    fullWidth
+                  >
+                    {isPaying ? 'Processing...' : 'Pay Now'}
+                  </Button>
                 )}
               </div>
             </motion.div>
